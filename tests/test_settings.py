@@ -238,3 +238,32 @@ class HotReloadTests(_TmpCase):
         from cliclock.config import default_settings, save_settings
         save_settings(default_settings(), self.path)
         self.assertEqual([p.name for p in self.path.parent.iterdir()], ["config.toml"])
+
+
+class AltScreenTests(unittest.TestCase):
+    def test_tty_loop_uses_alt_screen_and_restores_it(self):
+        from cliclock import cli
+        out = io.StringIO()
+        out.isatty = lambda: True
+        calls = []
+
+        class Stop(Exception):
+            pass
+
+        def fake_sleep(_):
+            calls.append(1)
+            raise Stop
+
+        with mock.patch.object(cli.time, "sleep", fake_sleep), \
+                mock.patch.object(cli, "_notify_size", lambda c, r: None), \
+                mock.patch.object(cli.sys, "stdout", out):
+            with self.assertRaises(Stop):
+                cli._run_loop(default_settings())
+        text = out.getvalue()
+        self.assertTrue(text.startswith("\x1b[?1049h\x1b[?25l"))
+        self.assertTrue(text.endswith("\x1b[0m\x1b[?25h\x1b[?1049l"))
+        self.assertEqual(text.count("\x1b[?1049h"), 1)
+
+    def test_non_tty_never_touches_alt_screen(self):
+        code, out, _ = run(["--once"])
+        self.assertNotIn("\x1b[?1049", out)

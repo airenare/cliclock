@@ -28,6 +28,8 @@ from cliclock.config import (
 from cliclock.render import frame_size, render_frame
 
 _CLEAR_SCREEN = "\x1b[2J\x1b[H"
+_ALT_SCREEN_ON = "\x1b[?1049h"   # alternate screen: no scrollback, restores the shell view on exit
+_ALT_SCREEN_OFF = "\x1b[?1049l"
 _HIDE_CURSOR = "\x1b[?25l"
 _SHOW_CURSOR = "\x1b[?25h"
 _RESET_SGR = "\x1b[0m"
@@ -264,7 +266,7 @@ def _run_loop(settings: Settings, config_file: Path | None = None,
     size = frame_size(settings)
     try:
         if tty:
-            out.write(_HIDE_CURSOR)
+            out.write(f"{_ALT_SCREEN_ON}{_HIDE_CURSOR}")
             _notify_size(*size)
         while True:
             if config_file is not None and reload is not None:
@@ -296,7 +298,7 @@ def _run_loop(settings: Settings, config_file: Path | None = None,
     finally:
         if tty:
             try:
-                out.write(f"{_RESET_SGR}{_SHOW_CURSOR}\n")
+                out.write(f"{_RESET_SGR}{_SHOW_CURSOR}{_ALT_SCREEN_OFF}")
                 out.flush()
             except (BrokenPipeError, OSError):
                 pass
