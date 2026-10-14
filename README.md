@@ -4,6 +4,8 @@ A terminal clock for Arch / Omarchy, written in Python 3 with only the standard 
 
 Big ASCII digits (`block`, `slim`, `thin`, `led`, `ghost` and `tall` fonts), an animated colon (`blink` or `cycle`), 12/24-hour display, an optional date line and colour, plus an interactive settings menu. See [docs/INTERFACES.md](docs/INTERFACES.md) for the frozen contract.
 
+![cliclock in the block style](docs/images/screenshot.png)
+
 ## Install
 
 ### Arch / Omarchy package (system-wide)
