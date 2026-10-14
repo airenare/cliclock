@@ -76,7 +76,7 @@ def glyph_lines(style: str, char: str) -> tuple[str, ...]    # rows of one glyph
 | flag | meaning |
 |---|---|
 | (none) | run loop: one frame per `refresh_seconds` until Ctrl-C / SIGTERM (exit 0). Cursor and SGR are reset on exit |
-| `--settings [PATH]` | print resolved settings (sorted `key = value`), `config path = ...`, `config exists = True/False`; exit 0. Optional PATH is the config file. On a terminal (stdin and stdout both TTY) opens an interactive menu; `--no-menu` suppresses it. With a PATH argument or non-TTY stdio, prints only |
+| `--settings [PATH]` | print resolved settings (sorted `key = value`), `config path = ...`, `config exists = True/False`; exit 0. Optional PATH is the config file. On a terminal (stdin and stdout both TTY) without `--no-menu`, opens an interactive menu; otherwise prints only |
 | `--no-menu` | with `--settings`: suppress the interactive menu, print only |
 | `--save` | write the resolved settings (precedence: defaults < file < --set) to the config file |
 | `--reset` | delete the config file and exit |
