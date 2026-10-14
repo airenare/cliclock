@@ -1,11 +1,11 @@
-# Maintainer: air <airenare@gmail.com>
+# Maintainer: Anton Bakulin <airenare@gmail.com>
+# Local PKGBUILD (built from this checkout, not submitted to the AUR).
 pkgname=cliclock
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='A terminal clock (Python, stdlib only)'
 arch=('any')
-url='https://localhost/cliclock'
-# No LICENSE file is shipped yet; replace with a real SPDX id once one is added.
+# No upstream URL / LICENSE file shipped yet; add both before publishing.
 license=('custom')
 depends=('python')
 options=(!strip !debug)

@@ -9,6 +9,8 @@ if not os.path.isdir(os.path.join(_libdir, "cliclock")):
     sys.stderr.write(f"cliclock: broken install: {_libdir}/cliclock not found\n")
     raise SystemExit(1)
 sys.path.insert(0, _libdir)
+# Keep the install tree clean: never drop __pycache__ next to the installed package.
+sys.dont_write_bytecode = True
 
 from cliclock.cli import main  # noqa: E402
 

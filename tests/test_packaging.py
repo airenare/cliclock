@@ -41,7 +41,6 @@ class PackagingTests(unittest.TestCase):
                 os.environ,
                 HOME=home,
                 XDG_CONFIG_HOME=os.path.join(home, ".config"),
-                PYTHONDONTWRITEBYTECODE="1",
                 PATH=os.path.join(prefix, "bin") + os.pathsep + os.environ["PATH"],
             )
             env.pop("SUDO_USER", None)
