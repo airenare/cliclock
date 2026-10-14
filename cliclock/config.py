@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import tomllib
@@ -150,5 +151,13 @@ def save_settings(settings: Settings, path: Path | None = None) -> Path:
     target = Path(path) if path is not None else _default_config_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     lines = [f"{k} = {_toml_value(v)}" for k, v in asdict(settings).items()]
-    target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Write to a sibling temp file and rename so a running clock never reads a half-written file.
+    tmp = target.with_name(target.name + ".tmp")
+    try:
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.replace(tmp, target)
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
     return target

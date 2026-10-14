@@ -168,3 +168,73 @@ class _Args:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HotReloadTests(_TmpCase):
+    def _args(self, *extra):
+        from cliclock.cli import build_parser
+        return build_parser().parse_args([*self.cfg, *extra])
+
+    def test_reload_picks_up_valid_edit(self):
+        from cliclock.cli import _reload_settings
+        run(["--set", "digit_style=slim", "--save", *self.cfg])
+        run(["--set", "digit_style=tall", "--save", *self.cfg])
+        fresh = _reload_settings(self._args())
+        self.assertEqual(fresh.digit_style, "tall")
+
+    def test_reload_ignores_invalid_file_quietly(self):
+        from cliclock.cli import _reload_settings
+        self.path.parent.mkdir(parents=True)
+        for bad in ('digit_style = ', 'digit_style = "nope"\n', 'bogus = 1\n'):
+            self.path.write_text(bad)
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertIsNone(_reload_settings(self._args()), bad)
+            self.assertEqual(err.getvalue(), "")
+
+    def test_reload_keeps_cli_overrides(self):
+        from cliclock.cli import _reload_settings
+        run(["--set", "digit_style=slim", "--save", *self.cfg])
+        fresh = _reload_settings(self._args("--set", "digit_style=led", "--12h"))
+        self.assertEqual(fresh.digit_style, "led")
+        self.assertTrue(fresh.twelve_hour)
+
+    def test_loop_applies_reload_and_resizes_window(self):
+        from cliclock import cli
+        from cliclock.config import default_settings, save_settings
+        self.path.parent.mkdir(parents=True)
+        s = default_settings()
+        s.digit_style, s.color = "thin", False
+        save_settings(s, self.path)
+        ticks = []
+
+        class Stop(Exception):
+            pass
+
+        def fake_sleep(_):
+            ticks.append(1)
+            if len(ticks) == 1:
+                tall = default_settings()
+                tall.digit_style, tall.color = "tall", False
+                save_settings(tall, self.path)
+            elif len(ticks) == 3:
+                raise Stop
+
+        out = io.StringIO()
+        out.isatty = lambda: False
+        sizes = []
+        with mock.patch.object(cli.time, "sleep", fake_sleep), \
+                mock.patch.object(cli, "_notify_size", lambda c, r: sizes.append((c, r))), \
+                mock.patch.object(cli.sys, "stdout", out):
+            with self.assertRaises(Stop):
+                cli._run_loop(s, self.path, lambda: cli._reload_settings(self._args()))
+        text = out.getvalue()
+        self.assertIn("┌", text)       # first frame: thin
+        self.assertIn("█", text)       # after the edit: tall
+        # non-tty mode never calls the window hook
+        self.assertEqual(sizes, [])
+
+    def test_save_is_atomic_and_leaves_no_temp_file(self):
+        from cliclock.config import default_settings, save_settings
+        save_settings(default_settings(), self.path)
+        self.assertEqual([p.name for p in self.path.parent.iterdir()], ["config.toml"])

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import os
 import shlex
 import signal
@@ -210,20 +212,72 @@ def _notify_size(cols: int, rows: int) -> None:
         pass
 
 
-def _run_loop(settings: Settings) -> None:
+def _effective_settings(args: argparse.Namespace) -> Settings:
+    """Config file + ``--set`` overrides + the ``--12h``/``--24h`` flags."""
+    settings = load_settings(args)
+    if args.hours12:
+        settings.twelve_hour = True
+    elif args.hours24:
+        settings.twelve_hour = False
+    return settings
+
+
+def _file_signature(path: Path):
+    """Cheap change marker for the config file (``None`` when it is missing)."""
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _reload_settings(args: argparse.Namespace) -> Settings | None:
+    """Re-read the settings; ``None`` if the file is currently invalid.
+
+    Warnings are swallowed (the clock owns the screen) and a file with any
+    problem keeps the running settings, so a half-finished edit never resets
+    the clock to defaults.
+    """
+    captured = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(captured):
+            fresh = _effective_settings(args)
+    except Exception:
+        return None
+    return None if captured.getvalue() else fresh
+
+
+def _run_loop(settings: Settings, config_file: Path | None = None,
+              reload=None) -> None:
     """Tick loop: redraw the frame in place once per ``refresh_seconds``.
 
     On a TTY the cursor is hidden and the frame is redrawn in place; when
     stdout is not a TTY one newline-terminated frame is printed per tick.
-    The terminal (cursor visibility + SGR) is restored on every exit path.
+    When ``config_file`` and ``reload`` are given, a change to the file is
+    picked up on the next tick (hot reload) and the window hook is told the
+    new frame size. The terminal (cursor visibility + SGR) is restored on
+    every exit path.
     """
     tty = sys.stdout.isatty()
     out = sys.stdout
+    seen = _file_signature(config_file) if config_file is not None else None
+    size = frame_size(settings)
     try:
         if tty:
             out.write(_HIDE_CURSOR)
-            _notify_size(*frame_size(settings))
+            _notify_size(*size)
         while True:
+            if config_file is not None and reload is not None:
+                current = _file_signature(config_file)
+                if current != seen:
+                    seen = current
+                    fresh = reload()
+                    if fresh is not None:
+                        settings = fresh
+                        new_size = frame_size(settings)
+                        if tty and new_size != size:
+                            _notify_size(*new_size)
+                        size = new_size
             frame = render_frame(datetime.now(), settings)
             if tty:
                 out.write(f"{_CLEAR_SCREEN}{frame}")
@@ -268,11 +322,7 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 1
         return 0
-    settings = load_settings(args)
-    if args.hours12:
-        settings.twelve_hour = True
-    elif args.hours24:
-        settings.twelve_hour = False
+    settings = _effective_settings(args)
     if args.save:
         try:
             save_settings(settings, path)
@@ -294,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     signal.signal(signal.SIGTERM, _raise_exit)
     try:
-        _run_loop(settings)
+        _run_loop(settings, path, lambda: _reload_settings(args))
     except KeyboardInterrupt:
         pass
     return 0

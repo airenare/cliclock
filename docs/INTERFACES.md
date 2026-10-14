@@ -89,3 +89,5 @@ def glyph_lines(style: str, char: str) -> tuple[str, ...]    # rows of one glyph
 | `--help` | usage, exit 0 |
 
 Loop output: on a TTY the cursor is hidden and each tick clears the screen (`\x1b[2J\x1b[H`) and draws the frame; when stdout is not a TTY each frame is printed with a trailing newline. Ticks are aligned to multiples of `refresh_seconds`. A closed pipe (`BrokenPipeError`) ends the loop quietly. Cursor and SGR are restored on every exit path.
+
+The live clock re-reads the config file when its mtime or size changes (see README, "Hot reload"); `--set`, `--12h` and `--24h` still override the file, and a file with any problem is ignored.

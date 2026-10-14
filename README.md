@@ -125,6 +125,10 @@ Precedence: defaults < config file < `--set`. Invalid values, unknown keys and m
 
 Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`|`, `_`, `#`, `o`); `thin` is compact 3-row box-drawing digits; `led` is a dot matrix (`●` lit, `·` unlit); `ghost` is `▓` digits over a faint `░` background; `tall` is large 7-row digits, 5 columns wide per glyph.
 
+## Hot reload
+
+The running clock checks its config file once per tick and applies changes on the next redraw, so editing it, or using `cliclock --settings` in another terminal, restyles a live clock without restarting it. Settings given on the command line (`--set`, `--12h`, `--24h`) keep priority over the file. A file that is invalid, half-written or unreadable is ignored (the clock keeps its current settings and prints nothing). `--save` and the settings menu write atomically. The check is a single `stat()` per tick and the file is only parsed when it changes.
+
 If the environment variable `CLICLOCK_ON_SIZE` is set, the live clock runs `$CLICLOCK_ON_SIZE COLS ROWS` once at start so a launcher can fit its window to the chosen font (ignored when unset; failures are ignored).
 
 ### Settings menu
