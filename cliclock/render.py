@@ -64,9 +64,84 @@ def _slim_font() -> dict[str, tuple[str, ...]]:
     return font
 
 
+# 5x7 pixel bitmaps for the "tall" font.
+_TALL_BITMAPS: dict[str, tuple[str, ...]] = {
+    "0": (" ### ", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "),
+    "1": ("  #  ", " ##  ", "  #  ", "  #  ", "  #  ", "  #  ", " ### "),
+    "2": (" ### ", "#   #", "    #", "   # ", "  #  ", " #   ", "#####"),
+    "3": (" ### ", "#   #", "    #", "  ## ", "    #", "#   #", " ### "),
+    "4": ("   # ", "  ## ", " # # ", "#  # ", "#####", "   # ", "   # "),
+    "5": ("#####", "#    ", "#### ", "    #", "    #", "#   #", " ### "),
+    "6": (" ### ", "#    ", "#    ", "#### ", "#   #", "#   #", " ### "),
+    "7": ("#####", "    #", "   # ", "  #  ", " #   ", " #   ", " #   "),
+    "8": (" ### ", "#   #", "#   #", " ### ", "#   #", "#   #", " ### "),
+    "9": (" ### ", "#   #", "#   #", " ####", "    #", "    #", " ### "),
+}
+
+
+def _dotted_separators(on: str, off: str, width: int, rows: int,
+                       top: int, bottom: int) -> dict[str, tuple[str, ...]]:
+    """Separator glyphs drawn as single dots on rows ``top``/``bottom``."""
+    def make(*dot_rows: int) -> tuple[str, ...]:
+        blank = off * width
+        dot = off * (width // 2) + on + off * (width - width // 2 - 1)
+        return tuple(dot if r in dot_rows else blank for r in range(rows))
+    return {":": make(top, bottom), " ": make(), ".": make(bottom), "'": make(top)}
+
+
+def _tall_font() -> dict[str, tuple[str, ...]]:
+    font = {ch: _paint(rows, "█", " ") for ch, rows in _TALL_BITMAPS.items()}
+    font.update(_dotted_separators("█", " ", 5, 7, 2, 4))
+    return font
+
+
+def _led_font() -> dict[str, tuple[str, ...]]:
+    """Dot-matrix: lit pixels are ``● ``, unlit are a dim ``· ``."""
+    font = {ch: _paint(rows, "● ", "· ") for ch, rows in _BITMAPS.items()}
+    font[":"] = ("· · · ", "· ● · ", "· · · ", "· ● · ", "· · · ")
+    font[" "] = ("· · · ",) * 5
+    font["."] = ("· · · ", "· · · ", "· · · ", "· ● · ", "· · · ")
+    font["'"] = ("· ● · ", "· · · ", "· · · ", "· · · ", "· · · ")
+    return font
+
+
+def _ghost_font() -> dict[str, tuple[str, ...]]:
+    """Textured: lit pixels are ``▓▓`` over a faint ``░░`` background."""
+    font = {ch: _paint(rows, "▓▓", "░░") for ch, rows in _BITMAPS.items()}
+    font[":"] = ("░░░░░░", "░░▓▓░░", "░░░░░░", "░░▓▓░░", "░░░░░░")
+    font[" "] = ("░░░░░░",) * 5
+    font["."] = ("░░░░░░", "░░░░░░", "░░░░░░", "░░▓▓░░", "░░░░░░")
+    font["'"] = ("░░░░░░", "░░▓▓░░", "░░░░░░", "░░░░░░", "░░░░░░")
+    return font
+
+
+def _thin_font() -> dict[str, tuple[str, ...]]:
+    """Compact 3-row digits drawn with box-drawing line characters."""
+    return {
+        "0": ("┌─┐", "│ │", "└─┘"),
+        "1": ("╶┐ ", " │ ", "╶┴╴"),
+        "2": ("╶─┐", "┌─┘", "└─╴"),
+        "3": ("╶─┐", " ─┤", "╶─┘"),
+        "4": ("╷ ╷", "└─┤", "  ╵"),
+        "5": ("┌─╴", "└─┐", "╶─┘"),
+        "6": ("┌─╴", "├─┐", "└─┘"),
+        "7": ("╶─┐", "  │", "  ╵"),
+        "8": ("┌─┐", "├─┤", "└─┘"),
+        "9": ("┌─┐", "└─┤", "╶─┘"),
+        ":": (" · ", "   ", " · "),
+        " ": ("   ",) * 3,
+        ".": ("   ", "   ", " · "),
+        "'": (" · ", "   ", "   "),
+    }
+
+
 FONTS: dict[str, dict[str, tuple[str, ...]]] = {
     "block": _block_font(),
     "slim": _slim_font(),
+    "thin": _thin_font(),
+    "led": _led_font(),
+    "ghost": _ghost_font(),
+    "tall": _tall_font(),
 }
 
 
@@ -101,8 +176,8 @@ def _date_text(now: datetime, settings: Settings) -> str:
         return now.strftime("%Y-%m-%d")
 
 
-def render_frame(now: datetime, settings: Settings) -> str:
-    """Return the multi-line frame for ``now`` (no trailing newline)."""
+def _compose(now: datetime, settings: Settings) -> list[str]:
+    """Frame rows for ``now``, all padded to one width, with no margin or colour."""
     style = settings.digit_style
     hour_fmt = "%I" if settings.twelve_hour else "%H"
     text = now.strftime(hour_fmt) + ":" + now.strftime("%M")
@@ -121,7 +196,23 @@ def render_frame(now: datetime, settings: Settings) -> str:
         extra.append(_date_text(now, settings))
 
     width = max(len(line) for line in lines + extra)
-    lines = [line.ljust(width) for line in lines] + [e.center(width) for e in extra]
+    lines = [line.ljust(width) for line in lines]
+    if extra:
+        lines.append("")  # blank spacer between the digits and the date/AM-PM
+    lines += [e.center(width) for e in extra]
+    return lines
+
+
+def frame_size(settings: Settings) -> tuple[int, int]:
+    """``(columns, rows)`` the frame needs; constant for a given settings object."""
+    lines = _compose(datetime(2000, 1, 1, 12, 0, 0), settings)
+    return max(len(line) for line in lines), len(lines)
+
+
+def render_frame(now: datetime, settings: Settings) -> str:
+    """Return the multi-line frame for ``now`` (no trailing newline)."""
+    lines = _compose(now, settings)
+    width = max(len(line) for line in lines)
 
     cols = _term_columns()
     margin = (cols - width) // 2 if cols > width else 0

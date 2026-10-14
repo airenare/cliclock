@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import signal
+import subprocess
 import sys
 import time
 from dataclasses import asdict, fields
@@ -21,7 +23,7 @@ from cliclock.config import (
     load_settings,
     save_settings,
 )
-from cliclock.render import render_frame
+from cliclock.render import frame_size, render_frame
 
 _CLEAR_SCREEN = "\x1b[2J\x1b[H"
 _HIDE_CURSOR = "\x1b[?25l"
@@ -191,6 +193,23 @@ def interactive_menu(settings: Settings, path: Path) -> int:
         return 0
 
 
+def _notify_size(cols: int, rows: int) -> None:
+    """Tell a window manager hook how big the frame is.
+
+    If ``CLICLOCK_ON_SIZE`` is set it is run as ``<command> COLS ROWS`` so a
+    launcher can fit its window to the chosen font. Failures are ignored.
+    """
+    cmd = os.environ.get("CLICLOCK_ON_SIZE")
+    if not cmd:
+        return
+    try:
+        subprocess.run([*shlex.split(cmd), str(cols), str(rows)], timeout=3, check=False,
+                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+
+
 def _run_loop(settings: Settings) -> None:
     """Tick loop: redraw the frame in place once per ``refresh_seconds``.
 
@@ -203,6 +222,7 @@ def _run_loop(settings: Settings) -> None:
     try:
         if tty:
             out.write(_HIDE_CURSOR)
+            _notify_size(*frame_size(settings))
         while True:
             frame = render_frame(datetime.now(), settings)
             if tty:

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from cliclock.cli import build_parser, main  # noqa: E402
 from cliclock.config import default_settings, load_settings  # noqa: E402
 from cliclock.render import (  # noqa: E402
-    FONTS, available_fonts, glyph_lines, render_frame,
+    FONTS, available_fonts, frame_size, glyph_lines, render_frame,
 )
 
 
@@ -143,7 +143,8 @@ class RenderTests(unittest.TestCase):
                          len(render_frame(T1, s).splitlines()))
 
     def test_fonts(self):
-        self.assertEqual(set(available_fonts()), {"block", "slim"})
+        self.assertEqual(set(available_fonts()),
+                         {"block", "slim", "thin", "led", "ghost", "tall"})
         for name, font in FONTS.items():
             for d in "0123456789:":
                 self.assertIn(d, font, name)
@@ -156,7 +157,7 @@ class RenderTests(unittest.TestCase):
 
     def test_structure(self):
         self.assertEqual(len(render_frame(T, S()).splitlines()), 5)
-        self.assertEqual(len(render_frame(T, S(show_date=True)).splitlines()), 6)
+        self.assertEqual(len(render_frame(T, S(show_date=True)).splitlines()), 7)
         self.assertIn("Fri 02 Jan 2026", render_frame(T, S(show_date=True)))
 
     def test_weird_date_format(self):
@@ -179,6 +180,38 @@ class RenderTests(unittest.TestCase):
         self.assertTrue(on.endswith("\x1b[0m"))
         self.assertEqual(on.count("\x1b[0m"), 1)
         self.assertNotIn("\x1b", render_frame(T, S(color=False)))
+
+    def test_frame_size_matches_every_font(self):
+        expected_rows = {"block": 5, "slim": 5, "thin": 3, "led": 5, "ghost": 5, "tall": 7}
+        for style, rows in expected_rows.items():
+            for date in (False, True):
+                s = S(digit_style=style, show_date=date, color=False)
+                cols, height = frame_size(s)
+                self.assertEqual(height, rows + (2 if date else 0), (style, date))
+                for now in (T, T1, T_EIGHTS):
+                    with mock.patch("cliclock.render._term_columns", return_value=0):
+                        lines = render_frame(now, s).splitlines()
+                    self.assertEqual(len(lines), height, style)
+                    self.assertLessEqual(max(len(l) for l in lines), cols, style)
+
+    def test_blank_row_between_digits_and_date(self):
+        s = S(digit_style="block", show_date=True, color=False)
+        with mock.patch("cliclock.render._term_columns", return_value=0):
+            lines = render_frame(T, s).splitlines()
+        self.assertEqual(lines[5], "")
+        self.assertTrue(lines[6].strip())
+
+    def test_size_hook_runs_only_when_env_set(self):
+        from cliclock import cli
+        with mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch("cliclock.cli.subprocess.run") as run_:
+            os.environ.pop("CLICLOCK_ON_SIZE", None)
+            cli._notify_size(62, 7)
+            run_.assert_not_called()
+        with mock.patch.dict(os.environ, {"CLICLOCK_ON_SIZE": "fit --x"}), \
+                mock.patch("cliclock.cli.subprocess.run") as run_:
+            cli._notify_size(62, 7)
+            self.assertEqual(run_.call_args[0][0], ["fit", "--x", "62", "7"])
 
     def test_no_trailing_newline_and_rectangular(self):
         for style in ("block", "slim"):

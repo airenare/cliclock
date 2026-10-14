@@ -11,7 +11,7 @@ DEFAULT_CONFIG_PATH: Path            # ~/.config/cliclock/config.toml (respect $
 
 @dataclass
 class Settings:
-    digit_style: str = "block"       # "block" | "slim"
+    digit_style: str = "block"       # "block" | "slim" | "thin" | "led" | "ghost" | "tall"
     twelve_hour: bool = False
     show_seconds: bool = True
     show_date: bool = False
@@ -31,7 +31,7 @@ def config_path(args=None) -> Path            # --config > --settings PATH > XDG
 
 | field | type | allowed |
 |---|---|---|
-| `digit_style` | str | `block`, `slim` |
+| `digit_style` | str | `block`, `slim`, `thin`, `led`, `ghost`, `tall` |
 | `twelve_hour` | bool | true/false |
 | `show_seconds` | bool | true/false |
 | `show_date` | bool | true/false |
@@ -63,11 +63,12 @@ color_name = "cyan"
 
 ```python
 def render_frame(now: datetime, settings: Settings) -> str   # multi-line frame, no trailing newline
-def available_fonts() -> tuple[str, ...]                     # ("block", "slim")
+def available_fonts() -> tuple[str, ...]                     # ("block", "slim", "thin", "led", "ghost", "tall")
+def frame_size(settings: Settings) -> tuple[int, int]            # (columns, rows) the frame needs
 def glyph_lines(style: str, char: str) -> tuple[str, ...]    # rows of one glyph; unknown style -> block, unknown char -> blank
 ```
 
-`render_frame` is a pure function of `now`, `settings` and the terminal width. Digits are 5 rows tall in the `block` (`██`) and `slim` (ASCII) fonts, joined by a two-space gutter and centred in the terminal. `twelve_hour` uses `%I` and adds an AM/PM line; `show_date` adds a `date_format` line; `color` wraps the frame in one SGR colour sequence and a reset. The separator is animated by `tick_style`: `blink` alternates `:` and blank each second, `cycle` steps through `:`, lower dot, `:`, upper dot. The CLI calls only `render_frame`.
+`render_frame` is a pure function of `now`, `settings` and the terminal width. Digits are 5 rows tall in `block` (`██`), `slim` (ASCII), `led` and `ghost`, 3 rows in `thin` and 7 rows in `tall`, joined by a two-space gutter and centred in the terminal. `twelve_hour` uses `%I` and adds an AM/PM line; `show_date` adds a `date_format` line; `color` wraps the frame in one SGR colour sequence and a reset. The separator is animated by `tick_style`: `blink` alternates `:` and blank each second, `cycle` steps through `:`, lower dot, `:`, upper dot. The CLI calls only `render_frame`.
 
 ## cli.py
 

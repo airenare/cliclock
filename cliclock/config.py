@@ -24,7 +24,7 @@ DEFAULT_CONFIG_PATH: Path = _default_config_path()
 class Settings:
     """All user-tunable options. Field names are a frozen contract."""
 
-    digit_style: str = "block"  # "block" | "slim"
+    digit_style: str = "block"  # "block" | "slim" | "thin" | "led" | "ghost" | "tall"
     twelve_hour: bool = False
     show_seconds: bool = True
     show_date: bool = False
@@ -36,7 +36,7 @@ class Settings:
 
 
 _CHOICES: dict[str, tuple[str, ...]] = {
-    "digit_style": ("block", "slim"),
+    "digit_style": ("block", "slim", "thin", "led", "ghost", "tall"),
     "tick_style": ("blink", "cycle"),
     "color_name": COLOR_NAMES,
 }
