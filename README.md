@@ -123,7 +123,7 @@ Precedence: defaults < config file < `--set`. Invalid values, unknown keys and m
 
 ### Digit fonts
 
-Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`|`, `_`, `#`, `o`); `thin` is compact 3-row box-drawing digits; `led` is a dot matrix (`●` lit, `·` unlit); `ghost` is `▓` digits over a faint `░` background; `tall` is large 7-row digits, 5 columns wide per glyph.
+Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`#`, with `o` dots as the separator); `thin` is compact 3-row box-drawing digits; `led` is a dot matrix (`●` lit, `·` unlit); `ghost` is `▓` digits over a faint `░` background; `tall` is large 7-row digits, 5 columns wide per glyph.
 
 ## Hot reload
 

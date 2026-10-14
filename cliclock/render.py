@@ -54,9 +54,7 @@ def _block_font() -> dict[str, tuple[str, ...]]:
 
 def _slim_font() -> dict[str, tuple[str, ...]]:
     font = {ch: _paint(rows, "#", " ") for ch, rows in _BITMAPS.items()}
-    # Slim uses ASCII line-art touches so it reads differently from block.
-    font["0"] = (" _ ", "| |", "| |", "| |", "|_|")
-    font["8"] = (" _ ", "|_|", "|_|", "| |", "|_|")
+    # Slim paints single "#" pixels; only the separators use "o" dots.
     font[":"] = ("   ", " o ", "   ", " o ", "   ")
     font[" "] = ("   ",) * 5
     font["."] = ("   ", "   ", "   ", " o ", "   ")
