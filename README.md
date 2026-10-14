@@ -2,7 +2,7 @@
 
 A terminal clock for Arch / Omarchy, written in Python 3 with only the standard library.
 
-**Status:** early. The ASCII rendering is still a placeholder frame (one line of text); real digit fonts are not implemented yet. See [docs/INTERFACES.md](docs/INTERFACES.md) for the frozen contract.
+Big ASCII digits (`block` and `slim` fonts), an animated colon (`blink` or `cycle`), 12/24-hour display, an optional date line and colour, plus an interactive settings menu. See [docs/INTERFACES.md](docs/INTERFACES.md) for the frozen contract.
 
 ## Install
 
@@ -52,10 +52,14 @@ Manually, for the user-level install: `rm -f ~/.local/bin/cliclock && rm -rf ~/.
 | flag | meaning |
 |---|---|
 | (none) | run the clock until Ctrl-C |
-| `--settings [PATH]` | print the resolved settings, config path and whether the file exists, then exit; optional PATH selects the config file |
+| `--settings [PATH]` | on a terminal, open the interactive settings menu; otherwise (or with `--no-menu`) print the resolved settings, config path and whether the file exists. Optional PATH selects the config file |
+| `--no-menu` | with `--settings`: never open the menu, just print |
+| `--save` | write the resolved settings (defaults < config file < `--set`) to the config file |
+| `--reset` | delete the config file and exit |
 | `--set KEY=VALUE` | per-run settings override, repeatable (also works with `--settings`) |
 | `--config PATH` | config file location override (wins over `--settings PATH`) |
 | `--once` | render one frame and exit |
+| `--12h` / `--24h` | force the 12-hour (with AM/PM) or 24-hour clock for this run; mutually exclusive |
 | `--version` | print `cliclock 0.1.0` |
 | `--help` | show usage |
 
@@ -65,7 +69,10 @@ With no flags the clock runs until you press Ctrl-C (or send SIGTERM); it then e
 cliclock                                  # run until Ctrl-C
 cliclock --once                           # one frame, then exit
 cliclock --set twelve_hour=true --set show_seconds=false
-cliclock --settings --set color_name=green
+cliclock --12h --set digit_style=slim
+cliclock --set tick_style=cycle --save   # persist the choice
+cliclock --settings                       # interactive menu on a terminal
+cliclock --reset                          # delete the config file
 ```
 
 ## Settings
@@ -98,7 +105,27 @@ color_name = "cyan"
 
 Precedence: defaults < config file < `--set`. Invalid values, unknown keys and malformed TOML print a one-line warning to stderr and fall back to the default.
 
-There is no interactive settings menu yet: `--settings` just prints the resolved settings (sorted `key = value`), the config path and whether the file exists. Edit the TOML file by hand.
+### Digit fonts
+
+Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`|`, `_`, `#`, `o`).
+
+### Settings menu
+
+`cliclock --settings` opens a menu when both stdin and stdout are terminals. Piped or redirected runs (or `--no-menu`) print the plain settings block and never prompt.
+
+```
+cliclock settings
+config: /home/you/.config/cliclock/config.toml (no file yet)
+  1. digit_style           = block            (block | slim)
+  ...
+change [number|key]  s=save  d=defaults  q=quit>
+```
+
+- Type a setting's number or name, then its new value. An empty value keeps the current one.
+- Every accepted change is saved immediately. Bad values print an error and nothing is saved.
+- `s` save and quit, `d` reset all settings to defaults (saved), `q` or an empty line quit, `?` help.
+- Booleans accept `true/false/yes/no/y/n/1/0`.
+- Ctrl-D / Ctrl-C quit cleanly; earlier changes stay saved.
 
 ## Development
 

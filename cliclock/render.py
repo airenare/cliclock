@@ -1,26 +1,133 @@
 """ASCII rendering for cliclock.
 
-STUB: the real ASCII digit fonts (``block`` and ``slim``), colon blink/cycle
-and date line land in the follow-up rendering task. ``render_frame(now,
-settings) -> str`` is the single entry point that task must implement; the
-CLI only ever calls ``render_frame``.
+``render_frame(now, settings) -> str`` is the single entry point the CLI uses.
+It is a pure function of its arguments (plus the terminal width), so tests can
+call it with a fixed ``datetime``.
 """
 
 from __future__ import annotations
 
+import shutil
 from datetime import datetime
 
 from cliclock.config import Settings
 
+DEFAULT_FONT = "block"
+GUTTER = "  "
+RESET = "\x1b[0m"
+SGR_CODES = {
+    "red": 31, "green": 32, "yellow": 33, "blue": 34,
+    "magenta": 35, "cyan": 36, "white": 37,
+}
 
-def render_placeholder(now: datetime, settings: Settings) -> str:
-    """Return a one-line placeholder frame (this task's stub)."""
-    return f"cliclock {now.strftime('%H:%M:%S')} (placeholder render)"
+# Separator glyph keys: ":" both dots, " " blank, "." lower dot, "'" upper dot.
+# The "cycle" tick style walks this sequence (":", "·", ":", "˙" in spirit).
+CYCLE_SEQUENCE = (":", ".", ":", "'")
+
+# 3x5 pixel bitmaps shared by both fonts; each font only picks how to paint a pixel.
+_BITMAPS: dict[str, tuple[str, ...]] = {
+    "0": ("###", "# #", "# #", "# #", "###"),
+    "1": (" # ", "## ", " # ", " # ", "###"),
+    "2": ("###", "  #", "###", "#  ", "###"),
+    "3": ("###", "  #", "###", "  #", "###"),
+    "4": ("# #", "# #", "###", "  #", "  #"),
+    "5": ("###", "#  ", "###", "  #", "###"),
+    "6": ("###", "#  ", "###", "# #", "###"),
+    "7": ("###", "  #", "  #", "  #", "  #"),
+    "8": ("###", "# #", "###", "# #", "###"),
+    "9": ("###", "# #", "###", "  #", "###"),
+}
+
+
+def _paint(rows: tuple[str, ...], on: str, off: str) -> tuple[str, ...]:
+    return tuple("".join(on if c == "#" else off for c in row) for row in rows)
+
+
+def _block_font() -> dict[str, tuple[str, ...]]:
+    font = {ch: _paint(rows, "██", "  ") for ch, rows in _BITMAPS.items()}
+    font[":"] = ("      ", "  ██  ", "      ", "  ██  ", "      ")
+    font[" "] = ("      ",) * 5
+    font["."] = ("      ", "      ", "      ", "  ██  ", "      ")
+    font["'"] = ("      ", "  ██  ", "      ", "      ", "      ")
+    return font
+
+
+def _slim_font() -> dict[str, tuple[str, ...]]:
+    font = {ch: _paint(rows, "#", " ") for ch, rows in _BITMAPS.items()}
+    # Slim uses ASCII line-art touches so it reads differently from block.
+    font["0"] = (" _ ", "| |", "| |", "| |", "|_|")
+    font["8"] = (" _ ", "|_|", "|_|", "| |", "|_|")
+    font[":"] = ("   ", " o ", "   ", " o ", "   ")
+    font[" "] = ("   ",) * 5
+    font["."] = ("   ", "   ", "   ", " o ", "   ")
+    font["'"] = ("   ", " o ", "   ", "   ", "   ")
+    return font
+
+
+FONTS: dict[str, dict[str, tuple[str, ...]]] = {
+    "block": _block_font(),
+    "slim": _slim_font(),
+}
+
+
+def available_fonts() -> tuple[str, ...]:
+    """Names of the selectable digit fonts."""
+    return tuple(FONTS)
+
+
+def glyph_lines(style: str, char: str) -> tuple[str, ...]:
+    """Rows of ``char`` in font ``style`` (unknown style -> block, unknown char -> blank)."""
+    font = FONTS.get(style) or FONTS[DEFAULT_FONT]
+    return font.get(char) or font[" "]
+
+
+def _separator_key(now: datetime, settings: Settings) -> str:
+    if settings.tick_style == "cycle":
+        return CYCLE_SEQUENCE[now.second % len(CYCLE_SEQUENCE)]
+    return ":" if now.second % 2 == 0 else " "
+
+
+def _term_columns() -> int:
+    try:
+        return max(0, int(shutil.get_terminal_size().columns))
+    except Exception:
+        return 0
+
+
+def _date_text(now: datetime, settings: Settings) -> str:
+    try:
+        return now.strftime(settings.date_format)
+    except Exception:
+        return now.strftime("%Y-%m-%d")
 
 
 def render_frame(now: datetime, settings: Settings) -> str:
-    """Return the multi-line frame for ``now`` (no trailing newline).
+    """Return the multi-line frame for ``now`` (no trailing newline)."""
+    style = settings.digit_style
+    hour_fmt = "%I" if settings.twelve_hour else "%H"
+    text = now.strftime(hour_fmt) + ":" + now.strftime("%M")
+    if settings.show_seconds:
+        text += ":" + now.strftime("%S")
 
-    Currently delegates to :func:`render_placeholder`.
-    """
-    return render_placeholder(now, settings)
+    sep = _separator_key(now, settings)
+    glyphs = [glyph_lines(style, sep if ch == ":" else ch) for ch in text]
+    height = len(glyphs[0])
+    lines = [GUTTER.join(g[r] for g in glyphs) for r in range(height)]
+
+    extra: list[str] = []
+    if settings.twelve_hour:
+        extra.append(now.strftime("%p"))
+    if settings.show_date:
+        extra.append(_date_text(now, settings))
+
+    width = max(len(line) for line in lines + extra)
+    lines = [line.ljust(width) for line in lines] + [e.center(width) for e in extra]
+
+    cols = _term_columns()
+    margin = (cols - width) // 2 if cols > width else 0
+    out = "\n".join((" " * margin + line).rstrip() for line in lines)
+
+    if settings.color:
+        code = SGR_CODES.get(settings.color_name, SGR_CODES["cyan"])
+        out = f"\x1b[{code}m{out}{RESET}"
+    return out

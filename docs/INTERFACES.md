@@ -63,10 +63,11 @@ color_name = "cyan"
 
 ```python
 def render_frame(now: datetime, settings: Settings) -> str   # multi-line frame, no trailing newline
-def render_placeholder(now: datetime, settings: Settings) -> str  # stub: one line
+def available_fonts() -> tuple[str, ...]                     # ("block", "slim")
+def glyph_lines(style: str, char: str) -> tuple[str, ...]    # rows of one glyph; unknown style -> block, unknown char -> blank
 ```
 
-`render_frame` is currently a delegator to `render_placeholder`. The CLI calls only `render_frame`.
+`render_frame` is a pure function of `now`, `settings` and the terminal width. Digits are 5 rows tall in the `block` (`██`) and `slim` (ASCII) fonts, joined by a two-space gutter and centred in the terminal. `twelve_hour` uses `%I` and adds an AM/PM line; `show_date` adds a `date_format` line; `color` wraps the frame in one SGR colour sequence and a reset. The separator is animated by `tick_style`: `blink` alternates `:` and blank each second, `cycle` steps through `:`, lower dot, `:`, upper dot. The CLI calls only `render_frame`.
 
 ## cli.py
 
@@ -79,7 +80,8 @@ def render_placeholder(now: datetime, settings: Settings) -> str  # stub: one li
 | `--set KEY=VALUE` | repeatable per-run override; works with `--settings` |
 | `--config PATH` | config file location; wins over `--settings PATH` |
 | `--once` | render one frame, print it with a newline, exit 0 |
+| `--12h` / `--24h` | force `twelve_hour` true/false for this run (also applies to `--save` and the menu); mutually exclusive (argparse exit 2) |
 | `--version` | print `cliclock 0.1.0`, exit 0 |
 | `--help` | usage, exit 0 |
 
-Loop output: on a TTY each tick is `\r` + clear-line + frame (no newline); when stdout is not a TTY each frame is printed with a trailing newline. The follow-up render task owns real redraw-in-place logic.
+Loop output: on a TTY the cursor is hidden and each tick clears the screen (`\x1b[2J\x1b[H`) and draws the frame; when stdout is not a TTY each frame is printed with a trailing newline. Ticks are aligned to multiples of `refresh_seconds`. A closed pipe (`BrokenPipeError`) ends the loop quietly. Cursor and SGR are restored on every exit path.
