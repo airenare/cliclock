@@ -3,3 +3,5 @@ __pycache__/
 pkg/
 src/
 *.pkg.tar.*
+scratch/
+test-install-scratch/

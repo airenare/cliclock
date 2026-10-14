@@ -2,21 +2,21 @@
 
 A terminal clock for Arch / Omarchy, written in Python 3 with only the standard library.
 
-Big ASCII digits (`block` and `slim` fonts), an animated colon (`blink` or `cycle`), 12/24-hour display, an optional date line and colour, plus an interactive settings menu. See [docs/INTERFACES.md](docs/INTERFACES.md) for the frozen contract.
+Big ASCII digits (`block`, `slim`, `thin`, `led`, `ghost` and `tall` fonts), an animated colon (`blink` or `cycle`), 12/24-hour display, an optional date line and colour, plus an interactive settings menu. See [docs/INTERFACES.md](docs/INTERFACES.md) for the frozen contract.
 
 ## Install
 
 ### Arch / Omarchy package (system-wide)
 
 ```bash
-git clone <repo> && cd cliclock && makepkg -si
+git clone https://github.com/airenare/cliclock.git && cd cliclock && makepkg -si
 cliclock --version
 ```
 
 ### User-level install (no root)
 
 ```bash
-git clone <repo> && cd cliclock && ./install.sh
+git clone https://github.com/airenare/cliclock.git && cd cliclock && ./install.sh
 cliclock --version
 ```
 
@@ -93,7 +93,7 @@ color_name = "cyan"
 
 | field | allowed values |
 |---|---|
-| `digit_style` | `"block"`, `"slim"` |
+| `digit_style` | `"block"`, `"slim"`, `"thin"`, `"led"`, `"ghost"`, `"tall"` |
 | `twelve_hour` | `true`, `false` |
 | `show_seconds` | `true`, `false` |
 | `show_date` | `true`, `false` |
@@ -107,7 +107,9 @@ Precedence: defaults < config file < `--set`. Invalid values, unknown keys and m
 
 ### Digit fonts
 
-Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`|`, `_`, `#`, `o`).
+Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `slim` is narrow 5-row ASCII digits (`|`, `_`, `#`, `o`); `thin` is compact 3-row box-drawing digits; `led` is a dot matrix (`●` lit, `·` unlit); `ghost` is `▓` digits over a faint `░` background; `tall` is large 7-row digits, 5 columns wide per glyph.
+
+If the environment variable `CLICLOCK_ON_SIZE` is set, the live clock runs `$CLICLOCK_ON_SIZE COLS ROWS` once at start so a launcher can fit its window to the chosen font (ignored when unset; failures are ignored).
 
 ### Settings menu
 
@@ -116,7 +118,7 @@ Selected with `digit_style`: `block` is big 5-row digits drawn with `██`; `s
 ```
 cliclock settings
 config: /home/you/.config/cliclock/config.toml (no file yet)
-  1. digit_style           = block            (block | slim)
+  1. digit_style           = block            (block | slim | thin | led | ghost | tall)
   ...
 change [number|key]  s=save  d=defaults  q=quit>
 ```
@@ -145,3 +147,16 @@ python3 -m unittest discover -s tests -v
 ## Requirements
 
 Python 3.11 or newer (standard library only, including `tomllib`). No other runtime dependencies.
+
+## Hyprland launcher (optional)
+
+`contrib/hyprland/` has two helper scripts for a small floating Ghostty window that fits the clock:
+
+- `cliclock-window [cliclock args]` opens the window, e.g. `cliclock-window --set digit_style=tall`.
+- `cliclock-fit-window COLS ROWS` is called by cliclock itself (through `CLICLOCK_ON_SIZE`) to resize and centre the window for the chosen font, so the padding stays equal on all four sides.
+
+Copy both to a directory on your `PATH` and bind the launcher, for example in a Lua Hyprland config: `hl.bind("SUPER + SHIFT + code:53", hl.dsp.exec_cmd("cliclock-window"))`. The pixel metrics are calibrated for Ghostty font size 14; edit `CELL_W`, `CELL_H` and `OVERHEAD` in `cliclock-fit-window` if yours differ. The scripts use Hyprland's Lua dispatcher syntax and need `hyprctl`, `jq` and `ghostty`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

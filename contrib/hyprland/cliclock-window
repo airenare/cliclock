@@ -1,0 +1,6 @@
+#!/bin/bash
+# Open cliclock in a small floating terminal. cliclock sizes the window itself on start
+# (CLICLOCK_ON_SIZE -> cliclock-fit-window), so the size follows the configured digit style.
+# Extra arguments are passed to cliclock, e.g. cliclock-window --set digit_style=tall
+args=; [ $# -gt 0 ] && args=$(printf ' %q' "$@")
+exec hyprctl dispatch "hl.dsp.exec_cmd(\"env CLICLOCK_ON_SIZE=cliclock-fit-window ghostty --class=com.mitchellh.cliclock --title=cliclock --window-padding-x=32 --window-padding-y=32 --window-padding-balance=false -e cliclock$args\", {float=true, center=true})"

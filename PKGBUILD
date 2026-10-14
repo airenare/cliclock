@@ -1,12 +1,12 @@
 # Maintainer: Anton Bakulin <airenare@gmail.com>
-# Local PKGBUILD (built from this checkout, not submitted to the AUR).
+# Built from a local checkout of https://github.com/airenare/cliclock (nothing is downloaded).
 pkgname=cliclock
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='A terminal clock (Python, stdlib only)'
 arch=('any')
-# No upstream URL / LICENSE file shipped yet; add both before publishing.
-license=('custom')
+url='https://github.com/airenare/cliclock'
+license=('MIT')
 depends=('python')
 options=(!strip !debug)
 
