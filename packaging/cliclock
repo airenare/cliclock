@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+"""cliclock launcher for the installed layout (<prefix>/bin + <prefix>/lib/cliclock)."""
+import os
+import sys
+
+_prefix = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+_libdir = os.path.join(_prefix, "lib", "cliclock")
+if not os.path.isdir(os.path.join(_libdir, "cliclock")):
+    sys.stderr.write(f"cliclock: broken install: {_libdir}/cliclock not found\n")
+    raise SystemExit(1)
+sys.path.insert(0, _libdir)
+
+from cliclock.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())
