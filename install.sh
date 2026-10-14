@@ -10,7 +10,7 @@ Usage: install.sh [--prefix DIR] [--uninstall] [-h|--help]
 
 Installs cliclock under a prefix:
   <prefix>/bin/cliclock
-  <prefix>/lib/cliclock/{cliclock/*.py,README.md,docs/INTERFACES.md}
+  <prefix>/lib/cliclock/cliclock/*.py
 
 Options:
   --prefix DIR   install prefix (default: \$HOME/.local; /usr/local when run
@@ -86,13 +86,11 @@ fi
 # Replace any previous install cleanly (also drops a stale bin symlink).
 rm -rf -- "$lib_path"
 rm -f -- "$bin_path"
-mkdir -p "$lib_path/cliclock" "$lib_path/docs" "$prefix/bin"
+mkdir -p "$lib_path/cliclock" "$prefix/bin"
 
 for f in "$SRC"/cliclock/*.py; do
     install -m 0644 "$f" "$lib_path/cliclock/"
 done
-install -m 0644 "$SRC/README.md" "$lib_path/README.md"
-install -m 0644 "$SRC/docs/INTERFACES.md" "$lib_path/docs/INTERFACES.md"
 install -m 0755 "$SRC/packaging/cliclock" "$bin_path"
 
 echo "Installed files:"

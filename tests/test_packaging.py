@@ -54,7 +54,7 @@ class PackagingTests(unittest.TestCase):
             exe = os.path.join(prefix, "bin", "cliclock")
             r = sh(exe, "--version")
             self.assertEqual((r.returncode, r.stdout.strip()),
-                             (0, "cliclock 0.1.0"), r.stderr)
+                             (0, "cliclock 0.2.0"), r.stderr)
             r = sh(exe, "--once")
             self.assertEqual(r.returncode, 0, r.stderr)
             for _dirpath, dirs, files in os.walk(os.path.join(prefix, "lib", "cliclock")):

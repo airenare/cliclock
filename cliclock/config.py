@@ -23,7 +23,7 @@ DEFAULT_CONFIG_PATH: Path = _default_config_path()
 
 @dataclass
 class Settings:
-    """All user-tunable options. Field names are a frozen contract."""
+    """All user-tunable options; the field names are the config-file keys."""
 
     digit_style: str = "block"  # "block" | "slim" | "thin" | "led" | "ghost" | "tall"
     twelve_hour: bool = False

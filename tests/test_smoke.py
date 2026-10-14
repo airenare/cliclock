@@ -39,7 +39,7 @@ class SmokeTests(unittest.TestCase):
     def test_version(self):
         code, out, _ = run(["--version"])
         self.assertEqual(code, 0)
-        self.assertEqual(out.strip(), "cliclock 0.1.0")
+        self.assertEqual(out.strip(), "cliclock 0.2.0")
 
     def test_help(self):
         code, out, _ = run(["--help"])
